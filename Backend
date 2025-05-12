@@ -1,0 +1,60 @@
+from flask import Flask, render_template, request, redirect, url_for
+import sqlite3
+
+app = Flask(__name__)
+
+# Connect to SQLite database
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Initialize Database
+def init_db():
+    conn = get_db_connection()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            date TEXT NOT NULL,
+            status TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Homepage route
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    records = conn.execute('SELECT * FROM attendance').fetchall()
+    conn.close()
+    return render_template('index.html', records=records)
+
+# Add attendance
+@app.route('/add', methods=['POST'])
+def add_attendance():
+    name = request.form['name']
+    status = request.form['status']
+    date = request.form['date']
+    
+    conn = get_db_connection()
+    conn.execute('INSERT INTO attendance (name, date, status) VALUES (?, ?, ?)', (name, date, status))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('index'))
+
+# Delete attendance record
+@app.route('/delete/<int:id>', methods=['GET'])
+def delete_attendance(id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM attendance WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
